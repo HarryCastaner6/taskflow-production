@@ -1,0 +1,510 @@
+{% extends "base.html" %}
+
+{% block title %}Create Board - Admin - Task Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="bi bi-plus-square"></i> Create New Board
+            </h1>
+            <div class="admin-nav">
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('admin.manage_users') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-people"></i> Users
+                    </a>
+                    <a href="{{ url_for('admin.manage_boards') }}" class="btn btn-primary">
+                        <i class="bi bi-kanban"></i> Boards
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('admin.admin_dashboard') }}">Admin</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('admin.manage_boards') }}">Boards</a>
+        </li>
+        <li class="breadcrumb-item active">Create Board</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-plus-square text-success"></i>
+                    Board Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="createBoardForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- Basic Information -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-info-circle"></i> Basic Information
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">
+                                Board Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control {{ 'is-invalid' if form.name.errors else '' }}"
+                                   id="name" name="name" value="{{ form.name.data or '' }}"
+                                   placeholder="Enter board name" required>
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.name.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Unique name for the board</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="owner_id" class="form-label">
+                                Board Owner <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select {{ 'is-invalid' if form.owner_id.errors else '' }}"
+                                    id="owner_id" name="owner_id" required>
+                                <option value="">Select board owner</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}"
+                                        {{ 'selected' if form.owner_id.data == user.id else '' }}>
+                                    {{ user.username }} ({{ user.email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.owner_id.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.owner_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">User who will own this board</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control {{ 'is-invalid' if form.description.errors else '' }}"
+                                      id="description" name="description" rows="3"
+                                      placeholder="Enter board description">{{ form.description.data or '' }}</textarea>
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.description.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Brief description of the board's purpose</div>
+                        </div>
+                    </div>
+
+                    <!-- Board Settings -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-gear"></i> Board Settings
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="visibility" class="form-label">Board Visibility</label>
+                            <select class="form-select" id="visibility" name="visibility">
+                                <option value="private" {{ 'selected' if form.visibility.data == 'private' else '' }}>
+                                    Private - Only members can see
+                                </option>
+                                <option value="public" {{ 'selected' if form.visibility.data == 'public' else '' }}>
+                                    Public - Anyone can see
+                                </option>
+                                <option value="organization" {{ 'selected' if form.visibility.data == 'organization' else '' }}>
+                                    Organization - All users can see
+                                </option>
+                            </select>
+                            <div class="form-text">Who can view this board</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="template" class="form-label">Board Template</label>
+                            <select class="form-select" id="template" name="template">
+                                <option value="">Blank Board</option>
+                                <option value="kanban" {{ 'selected' if form.template.data == 'kanban' else '' }}>
+                                    Kanban Board (To Do, In Progress, Done)
+                                </option>
+                                <option value="scrum" {{ 'selected' if form.template.data == 'scrum' else '' }}>
+                                    Scrum Board (Backlog, Sprint, Review, Done)
+                                </option>
+                                <option value="project" {{ 'selected' if form.template.data == 'project' else '' }}>
+                                    Project Management (Planning, Active, Testing, Complete)
+                                </option>
+                            </select>
+                            <div class="form-text">Pre-configured columns and workflow</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_archived" name="is_archived"
+                                       {{ 'checked' if form.is_archived.data else '' }}>
+                                <label class="form-check-label" for="is_archived">
+                                    <strong>Start Archived</strong>
+                                </label>
+                                <div class="form-text">Create board in archived state</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="allow_comments" name="allow_comments" checked
+                                       {{ 'checked' if form.allow_comments.data else '' }}>
+                                <label class="form-check-label" for="allow_comments">
+                                    <strong>Allow Comments</strong>
+                                </label>
+                                <div class="form-text">Enable task comments and discussions</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Initial Members -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-people"></i> Initial Members
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="members" class="form-label">Add Members</label>
+                            <select class="form-select" id="members" name="members" multiple>
+                                {% for user in users %}
+                                <option value="{{ user.id }}"
+                                        {{ 'selected' if user.id in (form.members.data or []) else '' }}>
+                                    {{ user.username }} ({{ user.email }})
+                                    {% if user.is_admin %} - Admin{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Hold Ctrl/Cmd to select multiple users. Board owner is automatically included.</div>
+                        </div>
+                    </div>
+
+                    <!-- Default Columns (shown when template is selected) -->
+                    <div class="row mb-4" id="defaultColumnsSection" style="display: none;">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-columns"></i> Default Columns
+                            </h6>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                The following columns will be created based on your selected template:
+                            </div>
+                            <div id="templateColumns"></div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Settings -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-sliders"></i> Additional Settings
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="color_theme" class="form-label">Color Theme</label>
+                            <select class="form-select" id="color_theme" name="color_theme">
+                                <option value="default" {{ 'selected' if form.color_theme.data == 'default' else '' }}>
+                                    Default (Blue)
+                                </option>
+                                <option value="green" {{ 'selected' if form.color_theme.data == 'green' else '' }}>
+                                    Green
+                                </option>
+                                <option value="purple" {{ 'selected' if form.color_theme.data == 'purple' else '' }}>
+                                    Purple
+                                </option>
+                                <option value="orange" {{ 'selected' if form.color_theme.data == 'orange' else '' }}>
+                                    Orange
+                                </option>
+                                <option value="red" {{ 'selected' if form.color_theme.data == 'red' else '' }}>
+                                    Red
+                                </option>
+                            </select>
+                            <div class="form-text">Visual theme for the board</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="send_invitations" name="send_invitations" checked
+                                       {{ 'checked' if form.send_invitations.data else '' }}>
+                                <label class="form-check-label" for="send_invitations">
+                                    <strong>Send Invitation Emails</strong>
+                                </label>
+                                <div class="form-text">Notify members about board access</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Notes -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="admin_notes" class="form-label">Admin Notes</label>
+                            <textarea class="form-control" id="admin_notes" name="admin_notes" rows="2"
+                                      placeholder="Internal notes about this board (not visible to users)">{{ form.admin_notes.data or '' }}</textarea>
+                            <div class="form-text">Internal notes for administrative purposes</div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="row">
+                        <div class="col-12">
+                            <hr class="my-4">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('admin.manage_boards') }}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Boards
+                                </a>
+                                <div>
+                                    <button type="button" class="btn btn-outline-secondary me-2" onclick="resetForm()">
+                                        <i class="bi bi-arrow-clockwise"></i> Reset Form
+                                    </button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-plus-square"></i> Create Board
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Template columns configuration
+const templateColumns = {
+    kanban: ['To Do', 'In Progress', 'Done'],
+    scrum: ['Backlog', 'Sprint', 'Review', 'Done'],
+    project: ['Planning', 'Active', 'Testing', 'Complete']
+};
+
+// Show template columns when template is selected
+document.getElementById('template').addEventListener('change', function() {
+    const template = this.value;
+    const section = document.getElementById('defaultColumnsSection');
+    const columnsDiv = document.getElementById('templateColumns');
+
+    if (template && templateColumns[template]) {
+        const columns = templateColumns[template];
+        columnsDiv.innerHTML = columns.map(col =>
+            `<span class="badge bg-primary me-2 mb-1">${col}</span>`
+        ).join('');
+        section.style.display = 'block';
+    } else {
+        section.style.display = 'none';
+    }
+});
+
+// Initialize template display if template is pre-selected
+document.addEventListener('DOMContentLoaded', function() {
+    const templateSelect = document.getElementById('template');
+    if (templateSelect.value) {
+        templateSelect.dispatchEvent(new Event('change'));
+    }
+});
+
+// Auto-suggest board name based on owner
+document.getElementById('owner_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const nameField = document.getElementById('name');
+
+    if (selectedOption.value && !nameField.value) {
+        const username = selectedOption.text.split(' (')[0];
+        nameField.placeholder = `Suggested: ${username}'s Board`;
+    }
+});
+
+// Form validation
+document.getElementById('createBoardForm').addEventListener('submit', function(e) {
+    const name = document.getElementById('name').value.trim();
+    const ownerId = document.getElementById('owner_id').value;
+
+    if (!name) {
+        e.preventDefault();
+        alert('Please enter a board name.');
+        document.getElementById('name').focus();
+        return;
+    }
+
+    if (!ownerId) {
+        e.preventDefault();
+        alert('Please select a board owner.');
+        document.getElementById('owner_id').focus();
+        return;
+    }
+
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating Board...';
+
+    // Re-enable button after 10 seconds as fallback
+    setTimeout(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }, 10000);
+});
+
+// Reset form
+function resetForm() {
+    if (confirm('Are you sure you want to reset the form? All entered data will be lost.')) {
+        document.getElementById('createBoardForm').reset();
+        document.getElementById('defaultColumnsSection').style.display = 'none';
+
+        // Remove all validation classes
+        document.querySelectorAll('.is-invalid').forEach(element => {
+            element.classList.remove('is-invalid');
+        });
+        document.querySelectorAll('.is-valid').forEach(element => {
+            element.classList.remove('is-valid');
+        });
+    }
+}
+
+// Real-time name validation
+document.getElementById('name').addEventListener('input', function() {
+    const name = this.value.trim();
+    if (name.length >= 3) {
+        // You can add AJAX validation here to check board name availability
+        checkBoardNameAvailability(name);
+    }
+});
+
+// Placeholder function for board name validation
+function checkBoardNameAvailability(name) {
+    // Implement AJAX call to check board name availability
+    console.log('Checking board name availability:', name);
+}
+
+// Multi-select enhancement for members
+document.addEventListener('DOMContentLoaded', function() {
+    const membersSelect = document.getElementById('members');
+    const ownerSelect = document.getElementById('owner_id');
+
+    // When owner changes, make sure they're not in the members list (as they're auto-included)
+    ownerSelect.addEventListener('change', function() {
+        const ownerId = this.value;
+        Array.from(membersSelect.options).forEach(option => {
+            if (option.value === ownerId) {
+                option.selected = false;
+                option.disabled = true;
+                option.title = "Board owner is automatically included";
+            } else {
+                option.disabled = false;
+                option.title = "";
+            }
+        });
+    });
+
+    // Initial check
+    if (ownerSelect.value) {
+        ownerSelect.dispatchEvent(new Event('change'));
+    }
+});
+
+// Visibility warning
+document.getElementById('visibility').addEventListener('change', function() {
+    const value = this.value;
+    if (value === 'public') {
+        if (!confirm('Making this board public means anyone can view it. Are you sure?')) {
+            this.value = 'private';
+        }
+    }
+});
+</script>
+
+<style>
+.admin-nav .btn-group .btn {
+    border-radius: 0;
+}
+
+.admin-nav .btn-group .btn:first-child {
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+.admin-nav .btn-group .btn:last-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.border-bottom {
+    border-bottom: 2px solid #e9ecef !important;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+}
+
+/* Multi-select styling */
+#members {
+    min-height: 120px;
+}
+
+#members option:disabled {
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+}
+
+/* Loading state for form submission */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Template columns badges */
+#templateColumns .badge {
+    font-size: 0.9em;
+    padding: 0.5em 0.75em;
+}
+</style>
+{% endblock %}

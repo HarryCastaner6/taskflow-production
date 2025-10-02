@@ -1,0 +1,700 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Board - Admin - Task Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="bi bi-pencil-square"></i> Edit Board
+            </h1>
+            <div class="admin-nav">
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('admin.manage_users') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-people"></i> Users
+                    </a>
+                    <a href="{{ url_for('admin.manage_boards') }}" class="btn btn-primary">
+                        <i class="bi bi-kanban"></i> Boards
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('admin.admin_dashboard') }}">Admin</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('admin.manage_boards') }}">Boards</a>
+        </li>
+        <li class="breadcrumb-item active">Edit Board</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <!-- Board Info Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-kanban text-primary"></i>
+                    Board Overview
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="board-icon mx-auto mb-3">
+                        {% if board.is_archived %}
+                            <i class="bi bi-archive text-muted" style="font-size: 3rem;"></i>
+                        {% else %}
+                            <i class="bi bi-kanban text-primary" style="font-size: 3rem;"></i>
+                        {% endif %}
+                    </div>
+                    <h5 class="card-title">{{ board.name }}</h5>
+                    <p class="text-muted">{{ board.description or 'No description' }}</p>
+                </div>
+
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h6 class="mb-1">{{ board.members|length }}</h6>
+                            <small class="text-muted">Members</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h6 class="mb-1">{{ board.tasks|length }}</h6>
+                            <small class="text-muted">Tasks</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="mb-1">{{ board.tasks|selectattr("is_completed")|list|length }}</h6>
+                        <small class="text-muted">Completed</small>
+                    </div>
+                </div>
+
+                <div class="mt-3 text-center">
+                    {% if board.is_archived %}
+                        <span class="badge bg-secondary">Archived</span>
+                    {% else %}
+                        <span class="badge bg-success">Active</span>
+                    {% endif %}
+                    <span class="badge bg-info">{{ board.visibility|title }}</span>
+                </div>
+
+                <div class="mt-3 text-muted small">
+                    <div><strong>Owner:</strong> {{ board.owner.username }}</div>
+                    <div><strong>Created:</strong> {{ board.created_at.strftime('%B %d, %Y') }}</div>
+                    {% if board.updated_at %}
+                    <div><strong>Updated:</strong> {{ board.updated_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card shadow mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin.manage_board_access', board_id=board.id) }}"
+                       class="btn btn-outline-info btn-sm">
+                        <i class="bi bi-people"></i> Manage Access
+                    </a>
+
+                    {% if board.is_archived %}
+                    <button type="button" class="btn btn-outline-success btn-sm"
+                            onclick="toggleBoardStatus({{ board.id }}, false)">
+                        <i class="bi bi-arrow-up-square"></i> Restore Board
+                    </button>
+                    {% else %}
+                    <button type="button" class="btn btn-outline-warning btn-sm"
+                            onclick="toggleBoardStatus({{ board.id }}, true)">
+                        <i class="bi bi-archive"></i> Archive Board
+                    </button>
+                    {% endif %}
+
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="duplicateBoard()">
+                        <i class="bi bi-files"></i> Duplicate Board
+                    </button>
+
+                    <button type="button" class="btn btn-outline-danger btn-sm"
+                            onclick="deleteBoard({{ board.id }}, '{{ board.name }}')">
+                        <i class="bi bi-trash"></i> Delete Board
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Board Members -->
+        <div class="card shadow mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-people"></i> Board Members
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if board.members %}
+                <div class="list-group list-group-flush">
+                    {% for member in board.members[:5] %}
+                    <div class="list-group-item border-0 px-0 py-1">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-sm me-2">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                     style="width: 24px; height: 24px; font-size: 0.75rem;">
+                                    {{ member.username[0].upper() }}
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <small>{{ member.username }}</small>
+                                {% if member.id == board.owner_id %}
+                                <span class="badge bg-warning badge-sm">Owner</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if board.members|length > 5 %}
+                    <div class="list-group-item border-0 px-0 py-1">
+                        <small class="text-muted">+{{ board.members|length - 5 }} more members</small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No additional members</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-pencil-square text-warning"></i>
+                    Edit Board Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="editBoardForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- Basic Information -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-info-circle"></i> Basic Information
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">
+                                Board Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control {{ 'is-invalid' if form.name.errors else '' }}"
+                                   id="name" name="name" value="{{ form.name.data or board.name }}"
+                                   placeholder="Enter board name" required>
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.name.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="owner_id" class="form-label">
+                                Board Owner <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select {{ 'is-invalid' if form.owner_id.errors else '' }}"
+                                    id="owner_id" name="owner_id" required>
+                                {% for user in users %}
+                                <option value="{{ user.id }}"
+                                        {{ 'selected' if (form.owner_id.data or board.owner_id) == user.id else '' }}>
+                                    {{ user.username }} ({{ user.email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.owner_id.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.owner_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Changing owner will transfer full control</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control {{ 'is-invalid' if form.description.errors else '' }}"
+                                      id="description" name="description" rows="3"
+                                      placeholder="Enter board description">{{ form.description.data or board.description or '' }}</textarea>
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.description.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Board Settings -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-gear"></i> Board Settings
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="visibility" class="form-label">Board Visibility</label>
+                            <select class="form-select" id="visibility" name="visibility">
+                                <option value="private" {{ 'selected' if (form.visibility.data or board.visibility) == 'private' else '' }}>
+                                    Private - Only members can see
+                                </option>
+                                <option value="public" {{ 'selected' if (form.visibility.data or board.visibility) == 'public' else '' }}>
+                                    Public - Anyone can see
+                                </option>
+                                <option value="organization" {{ 'selected' if (form.visibility.data or board.visibility) == 'organization' else '' }}>
+                                    Organization - All users can see
+                                </option>
+                            </select>
+                            <div class="form-text">Who can view this board</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="color_theme" class="form-label">Color Theme</label>
+                            <select class="form-select" id="color_theme" name="color_theme">
+                                <option value="default" {{ 'selected' if (form.color_theme.data or board.color_theme or 'default') == 'default' else '' }}>
+                                    Default (Blue)
+                                </option>
+                                <option value="green" {{ 'selected' if (form.color_theme.data or board.color_theme) == 'green' else '' }}>
+                                    Green
+                                </option>
+                                <option value="purple" {{ 'selected' if (form.color_theme.data or board.color_theme) == 'purple' else '' }}>
+                                    Purple
+                                </option>
+                                <option value="orange" {{ 'selected' if (form.color_theme.data or board.color_theme) == 'orange' else '' }}>
+                                    Orange
+                                </option>
+                                <option value="red" {{ 'selected' if (form.color_theme.data or board.color_theme) == 'red' else '' }}>
+                                    Red
+                                </option>
+                            </select>
+                            <div class="form-text">Visual theme for the board</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_archived" name="is_archived"
+                                       {{ 'checked' if form.is_archived.data if form.is_archived.data is not none else board.is_archived }}>
+                                <label class="form-check-label" for="is_archived">
+                                    <strong>Archived</strong>
+                                </label>
+                                <div class="form-text">Hide board from active lists</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="allow_comments" name="allow_comments"
+                                       {{ 'checked' if form.allow_comments.data if form.allow_comments.data is not none else board.allow_comments }}>
+                                <label class="form-check-label" for="allow_comments">
+                                    <strong>Allow Comments</strong>
+                                </label>
+                                <div class="form-text">Enable task comments and discussions</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Member Management -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-people"></i> Member Management
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="members" class="form-label">Board Members</label>
+                            <select class="form-select" id="members" name="members" multiple>
+                                {% for user in users %}
+                                <option value="{{ user.id }}"
+                                        {{ 'selected' if user.id in (form.members.data or board.members|map(attribute='id')|list) else '' }}
+                                        {{ 'disabled' if user.id == (form.owner_id.data or board.owner_id) else '' }}>
+                                    {{ user.username }} ({{ user.email }})
+                                    {% if user.is_admin %} - Admin{% endif %}
+                                    {% if user.id == (form.owner_id.data or board.owner_id) %} - Owner{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Hold Ctrl/Cmd to select multiple users. Board owner is automatically included.</div>
+                        </div>
+                    </div>
+
+                    <!-- Notification Settings -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="bi bi-bell"></i> Notification Settings
+                            </h6>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="notify_members" name="notify_members" checked>
+                                <label class="form-check-label" for="notify_members">
+                                    <strong>Notify Members</strong>
+                                </label>
+                                <div class="form-text">Send update notifications to board members</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="notify_owner" name="notify_owner" checked>
+                                <label class="form-check-label" for="notify_owner">
+                                    <strong>Notify Owner</strong>
+                                </label>
+                                <div class="form-text">Notify owner about board changes</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Notes -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="admin_notes" class="form-label">Admin Notes</label>
+                            <textarea class="form-control" id="admin_notes" name="admin_notes" rows="2"
+                                      placeholder="Internal notes about this board (not visible to users)">{{ form.admin_notes.data or board.admin_notes or '' }}</textarea>
+                            <div class="form-text">Internal notes for administrative purposes</div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="row">
+                        <div class="col-12">
+                            <hr class="my-4">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('admin.manage_boards') }}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Boards
+                                </a>
+                                <div>
+                                    <button type="button" class="btn btn-outline-secondary me-2" onclick="resetForm()">
+                                        <i class="bi bi-arrow-clockwise"></i> Reset Changes
+                                    </button>
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="bi bi-check-lg"></i> Update Board
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteBoardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete board <strong id="deleteBoardName"></strong>?</p>
+                <p class="text-danger small">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    This action cannot be undone. All board data and tasks will be permanently deleted.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteBoardForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <button type="submit" class="btn btn-danger">Delete Board</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate Board Modal -->
+<div class="modal fade" id="duplicateBoardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Duplicate Board</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Create a copy of <strong>{{ board.name }}</strong>?</p>
+                <div class="mb-3">
+                    <label for="duplicateName" class="form-label">New Board Name</label>
+                    <input type="text" class="form-control" id="duplicateName" value="{{ board.name }} (Copy)">
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="duplicateTasks" checked>
+                    <label class="form-check-label" for="duplicateTasks">
+                        Include existing tasks
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('admin.duplicate_board', board_id=board.id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="new_name" id="duplicateNameInput">
+                    <input type="hidden" name="include_tasks" id="duplicateTasksInput">
+                    <button type="submit" class="btn btn-info">Duplicate Board</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Delete board
+function deleteBoard(boardId, boardName) {
+    document.getElementById('deleteBoardName').textContent = boardName;
+    document.getElementById('deleteBoardForm').action = "{{ url_for('admin.delete_board', board_id=0) }}".replace('0', boardId);
+    new bootstrap.Modal(document.getElementById('deleteBoardModal')).show();
+}
+
+// Duplicate board
+function duplicateBoard() {
+    const modal = new bootstrap.Modal(document.getElementById('duplicateBoardModal'));
+    modal.show();
+
+    // Update hidden inputs when modal is submitted
+    const form = document.querySelector('#duplicateBoardModal form');
+    form.addEventListener('submit', function() {
+        document.getElementById('duplicateNameInput').value = document.getElementById('duplicateName').value;
+        document.getElementById('duplicateTasksInput').value = document.getElementById('duplicateTasks').checked;
+    });
+}
+
+// Toggle board status
+function toggleBoardStatus(boardId, archive) {
+    const action = archive ? 'archive' : 'restore';
+    if (confirm(`Are you sure you want to ${action} this board?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ url_for('admin.toggle_board_status', board_id=0) }}".replace('0', boardId);
+
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrf_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+
+        const statusInput = document.createElement('input');
+        statusInput.type = 'hidden';
+        statusInput.name = 'is_archived';
+        statusInput.value = archive;
+        form.appendChild(statusInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Reset form
+function resetForm() {
+    if (confirm('Are you sure you want to reset all changes? Unsaved modifications will be lost.')) {
+        location.reload();
+    }
+}
+
+// Form submission with loading state
+document.getElementById('editBoardForm').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating Board...';
+
+    // Re-enable button after 10 seconds as fallback
+    setTimeout(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }, 10000);
+});
+
+// Owner change warning
+document.getElementById('owner_id').addEventListener('change', function() {
+    const currentOwnerId = '{{ board.owner_id }}';
+    const newOwnerId = this.value;
+
+    if (currentOwnerId !== newOwnerId) {
+        if (!confirm('Changing the board owner will transfer full control to the new owner. Are you sure?')) {
+            this.value = currentOwnerId;
+            return;
+        }
+
+        // Update members select to reflect new owner
+        const membersSelect = document.getElementById('members');
+        Array.from(membersSelect.options).forEach(option => {
+            if (option.value === currentOwnerId) {
+                option.disabled = false;
+                option.text = option.text.replace(' - Owner', '');
+            }
+            if (option.value === newOwnerId) {
+                option.disabled = true;
+                option.selected = false;
+                if (!option.text.includes(' - Owner')) {
+                    option.text += ' - Owner';
+                }
+            }
+        });
+    }
+});
+
+// Visibility warning
+document.getElementById('visibility').addEventListener('change', function() {
+    const currentVisibility = '{{ board.visibility }}';
+    const newVisibility = this.value;
+
+    if (currentVisibility === 'private' && newVisibility === 'public') {
+        if (!confirm('Making this board public means anyone can view it. Are you sure?')) {
+            this.value = currentVisibility;
+        }
+    }
+});
+
+// Archive warning
+document.getElementById('is_archived').addEventListener('change', function() {
+    if (this.checked) {
+        if (!confirm('Archiving this board will hide it from active lists and may affect member access. Continue?')) {
+            this.checked = false;
+        }
+    }
+});
+
+// Initialize member select based on current owner
+document.addEventListener('DOMContentLoaded', function() {
+    const ownerId = document.getElementById('owner_id').value;
+    const membersSelect = document.getElementById('members');
+
+    Array.from(membersSelect.options).forEach(option => {
+        if (option.value === ownerId) {
+            option.disabled = true;
+            if (!option.text.includes(' - Owner')) {
+                option.text += ' - Owner';
+            }
+        }
+    });
+});
+
+// Real-time name validation
+document.getElementById('name').addEventListener('input', function() {
+    const name = this.value.trim();
+    const currentName = '{{ board.name }}';
+
+    if (name !== currentName && name.length >= 3) {
+        // You can add AJAX validation here to check board name availability
+        checkBoardNameAvailability(name);
+    }
+});
+
+// Placeholder function for board name validation
+function checkBoardNameAvailability(name) {
+    // Implement AJAX call to check board name availability
+    console.log('Checking board name availability:', name);
+}
+</script>
+
+<style>
+.admin-nav .btn-group .btn {
+    border-radius: 0;
+}
+
+.admin-nav .btn-group .btn:first-child {
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+.admin-nav .btn-group .btn:last-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+.board-icon {
+    margin: 0 auto;
+}
+
+.border-bottom {
+    border-bottom: 2px solid #e9ecef !important;
+}
+
+.border-end {
+    border-right: 1px solid #dee2e6 !important;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+}
+
+.avatar-sm {
+    flex-shrink: 0;
+}
+
+/* Multi-select styling */
+#members {
+    min-height: 120px;
+}
+
+#members option:disabled {
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+}
+
+/* Loading state for form submission */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+.badge-sm {
+    font-size: 0.7em;
+    padding: 0.25em 0.5em;
+}
+</style>
+{% endblock %}

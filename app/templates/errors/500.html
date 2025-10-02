@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - Task Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="card">
+            <div class="card-body py-5">
+                <div class="mb-4">
+                    <i class="bi bi-exclamation-octagon-fill text-danger" style="font-size: 4rem;"></i>
+                </div>
+                <h1 class="display-1 fw-bold text-muted">500</h1>
+                <h2 class="mb-3">Server Error</h2>
+                <p class="lead text-muted mb-4">
+                    Something went wrong on our end. We're working to fix this issue.
+                </p>
+                <div class="d-grid gap-2 d-md-block">
+                    <a href="javascript:history.back()" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Go Back
+                    </a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">
+                            <i class="bi bi-house"></i> Dashboard
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                            <i class="bi bi-house"></i> Home
+                        </a>
+                    {% endif %}
+                </div>
+                <hr class="my-4">
+                <p class="text-muted small">
+                    If this problem persists, please try refreshing the page or contact support.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

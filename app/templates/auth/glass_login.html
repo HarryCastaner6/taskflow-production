@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Task Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/glassmorphism.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-gradient-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="glass-nav">
+        <div class="nav-container">
+            <a href="{{ url_for('main.index') }}" class="nav-brand">TaskFlow</a>
+            <div class="nav-menu">
+                <a href="{{ url_for('main.index') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('auth.register') }}" class="nav-link">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-md-5 col-lg-4">
+                <!-- Login Card -->
+                <div class="profile-card">
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-gradient-to-r rounded-circle mb-3"
+                             style="width: 80px; height: 80px; background: var(--gradient-2);">
+                            <i class="bi bi-person-circle" style="font-size: 2rem; color: white;"></i>
+                        </div>
+                        <h2 class="mb-2">Welcome Back</h2>
+                        <p class="text-secondary mb-0">Sign in to your account</p>
+                    </div>
+
+                    {% include 'includes/notifications.html' %}
+
+                    <form method="POST" class="glass-form">
+                        {{ form.hidden_tag() }}
+
+                        {% if form.errors %}
+                            <div class="alert alert-danger glass-card mb-3" role="alert" style="padding: 1rem; margin-bottom: 1rem;">
+                                <strong style="color: var(--accent-color);">Please correct the following errors:</strong>
+                                <ul class="mb-0 mt-2" style="color: var(--text-secondary);">
+                                    {% for field_name, field_errors in form.errors.items() %}
+                                        {% if field_name != 'csrf_token' %}
+                                            {% for error in field_errors %}
+                                                <li>{{ field_name.title() }}: {{ error }}</li>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <div class="form-group">
+                            {{ form.username.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-secondary);">
+                                    <i class="bi bi-person"></i>
+                                </span>
+                                {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), placeholder="Enter your username", required=True) }}
+                            </div>
+                            {% if form.username.errors %}
+                                <div class="text-danger mt-1" style="font-size: 0.875rem;">
+                                    {% for error in form.username.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.password.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-secondary);">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Enter your password", required=True) }}
+                            </div>
+                            {% if form.password.errors %}
+                                <div class="text-danger mt-1" style="font-size: 0.875rem;">
+                                    {% for error in form.password.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="form-check">
+                                    {{ form.remember_me(class="form-check-input", style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border);") }}
+                                    {{ form.remember_me.label(class="form-check-label text-secondary") }}
+                                </div>
+                                <a href="{{ url_for('auth.forgot_password') }}" class="text-primary" style="font-size: 0.875rem; text-decoration: none;">
+                                    Forgot password?
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.submit(class="btn btn-primary w-100") }}
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4 pt-3" style="border-top: 1px solid var(--glass-border);">
+                        <p class="text-secondary mb-0">
+                            Don't have an account?
+                            <a href="{{ url_for('auth.register') }}" class="text-primary" style="text-decoration: none; font-weight: 500;">
+                                Create one here
+                            </a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Features Preview -->
+                <div class="text-center mt-4">
+                    <div class="glass-card" style="padding: 1.5rem;">
+                        <h6 class="text-secondary mb-3">Trusted by teams worldwide</h6>
+                        <div class="d-flex justify-content-center gap-3">
+                            <div class="expertise-tags">
+                                <span class="tag tag-conservation">Productivity</span>
+                                <span class="tag tag-ecology">Collaboration</span>
+                                <span class="tag tag-journalism">Analytics</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        .input-group-text {
+            border-top-left-radius: 12px !important;
+            border-bottom-left-radius: 12px !important;
+        }
+
+        .input-group .form-control {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+            border-left: none;
+        }
+
+        .input-group .form-control:focus {
+            border-left: none;
+            box-shadow: none;
+        }
+
+        .input-group-text:focus-within {
+            border-color: var(--primary-color);
+        }
+
+        .glass-form .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .min-vh-100 {
+            min-height: calc(100vh - 80px);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+    </style>
+</body>
+</html>

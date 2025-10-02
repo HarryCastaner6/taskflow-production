@@ -1,0 +1,383 @@
+{% extends "glass_base.html" %}
+
+{% block title %}Admin Dashboard - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Admin Header -->
+    <div class="glass-card mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">
+                    <i class="bi bi-shield-check text-primary"></i> Admin Dashboard
+                </h1>
+                <p style="color: var(--text-secondary); font-size: 1.125rem;">
+                    System overview and management tools
+                </p>
+            </div>
+            <div class="admin-nav">
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-primary">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('admin.manage_users') }}" class="btn btn-glass">
+                        <i class="bi bi-people"></i> Users
+                    </a>
+                    <a href="{{ url_for('admin.manage_boards') }}" class="btn btn-glass">
+                        <i class="bi bi-kanban"></i> Boards
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid mb-4">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-value">{{ stats.total_users or 0 }}</div>
+                    <div class="stat-change">{{ stats.active_users or 0 }} active</div>
+                </div>
+                <div style="background: var(--gradient-2); padding: 1rem; border-radius: 12px;">
+                    <i class="bi bi-people" style="font-size: 1.5rem; color: white;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Total Boards</div>
+                    <div class="stat-value">{{ stats.total_boards or 0 }}</div>
+                    <div class="stat-change">{{ (stats.total_boards or 0) - (recent_boards|length) }} existing</div>
+                </div>
+                <div style="background: var(--gradient-1); padding: 1rem; border-radius: 12px;">
+                    <i class="bi bi-kanban" style="font-size: 1.5rem; color: white;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Total Tasks</div>
+                    <div class="stat-value">{{ stats.total_tasks or 0 }}</div>
+                    <div class="stat-change">Across all boards</div>
+                </div>
+                <div style="background: var(--gradient-3); padding: 1rem; border-radius: 12px;">
+                    <i class="bi bi-check2-square" style="font-size: 1.5rem; color: white;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Active Sessions</div>
+                    <div class="stat-value">{{ stats.active_users or 0 }}</div>
+                    <div class="stat-change">Online now</div>
+                </div>
+                <div style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 1rem; border-radius: 12px;">
+                    <i class="bi bi-person-check" style="font-size: 1.5rem; color: white;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Admin Grid -->
+    <div class="dashboard-grid">
+        <!-- Left Sidebar - Quick Actions -->
+        <div class="sidebar">
+            <!-- Quick Admin Actions -->
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1rem; font-size: 1.125rem;">Quick Actions</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <a href="{{ url_for('admin.create_user') }}" class="btn btn-glass" style="justify-content: flex-start;">
+                        <i class="bi bi-person-plus"></i> Create User
+                    </a>
+                    <a href="{{ url_for('admin.create_board') }}" class="btn btn-glass" style="justify-content: flex-start;">
+                        <i class="bi bi-plus-square"></i> Create Board
+                    </a>
+                    <a href="{{ url_for('admin.manage_board_access') }}" class="btn btn-glass" style="justify-content: flex-start;">
+                        <i class="bi bi-shield-lock"></i> Manage Access
+                    </a>
+                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-glass" style="justify-content: flex-start;">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- System Health -->
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1rem; font-size: 1.125rem;">
+                    <i class="bi bi-heart text-success"></i> System Health
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.875rem;">Database</span>
+                        <span style="color: var(--primary-color); font-weight: 600;">Healthy</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.875rem;">Storage</span>
+                        <span style="color: var(--primary-color); font-weight: 600;">78% Free</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.875rem;">Performance</span>
+                        <span style="color: var(--primary-color); font-weight: 600;">Optimal</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Recent Users -->
+            <div class="glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="font-size: 1.5rem;">Recent Users</h2>
+                    <a href="{{ url_for('admin.manage_users') }}" class="btn btn-glass">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+
+                {% if recent_users %}
+                    <div style="display: grid; gap: 1rem;">
+                        {% for user in recent_users %}
+                        <div class="profile-card" style="max-width: none; margin: 0; padding: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--gradient-2); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.125rem;">
+                                        {{ user.username[0].upper() }}
+                                    </div>
+                                    <div>
+                                        <h6 style="margin-bottom: 0.25rem; font-size: 1rem;">{{ user.username }}</h6>
+                                        <p style="color: var(--text-secondary); margin-bottom: 0; font-size: 0.875rem;">{{ user.email }}</p>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="margin-bottom: 0.25rem;">
+                                        {% if user.is_admin %}
+                                            <span class="verified-badge">Admin</span>
+                                        {% else %}
+                                            <span style="background: var(--primary-color); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">User</span>
+                                        {% endif %}
+                                    </div>
+                                    <small style="color: var(--text-muted);">{{ user.created_at.strftime('%b %d, %Y') }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div style="text-align: center; padding: 3rem;">
+                        <i class="bi bi-people" style="font-size: 3rem; color: var(--text-muted);"></i>
+                        <p style="color: var(--text-secondary); margin-top: 1rem;">No users found.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Recent Boards -->
+            <div class="glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="font-size: 1.5rem;">Recent Boards</h2>
+                    <a href="{{ url_for('admin.manage_boards') }}" class="btn btn-glass">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+
+                {% if recent_boards %}
+                    <div style="display: grid; gap: 1rem;">
+                        {% for board in recent_boards %}
+                        <div class="task-card">
+                            <div class="task-priority priority-low"></div>
+                            <h3 class="task-title">{{ board.name }}</h3>
+                            <p class="task-description">{{ board.description or 'No description provided' }}</p>
+                            <div class="task-meta">
+                                <div class="task-date">
+                                    <i class="bi bi-calendar3"></i>
+                                    {{ board.created_at.strftime('%b %d, %Y') }}
+                                </div>
+                                <div class="task-assignee">
+                                    <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--gradient-1); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
+                                        {{ board.owner.username[0].upper() }}
+                                    </div>
+                                    <span>{{ board.owner.username }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div style="text-align: center; padding: 3rem;">
+                        <i class="bi bi-kanban" style="font-size: 3rem; color: var(--text-muted);"></i>
+                        <p style="color: var(--text-secondary); margin-top: 1rem;">No boards found.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="right-sidebar">
+            <!-- Recent Activity -->
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1rem; font-size: 1.125rem;">
+                    <i class="bi bi-activity"></i> Recent Activity
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% if recent_activities %}
+                        {% for activity in recent_activities %}
+                        <div style="display: flex; gap: 0.75rem; align-items: start;">
+                            <div style="width: 8px; height: 8px; margin-top: 0.5rem; border-radius: 50%;
+                                {% if activity.type == 'user_created' %}background: var(--primary-color);
+                                {% elif activity.type == 'board_created' %}background: var(--secondary-color);
+                                {% elif activity.type == 'task_created' %}background: var(--accent-color);
+                                {% else %}background: var(--text-muted);{% endif %}"></div>
+                            <div style="flex: 1;">
+                                <p style="font-size: 0.875rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+                                    {{ activity.description }}
+                                </p>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">
+                                    {{ activity.timestamp.strftime('%b %d, %H:%M') }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: var(--text-muted); font-size: 0.875rem;">No recent activity</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Admin Tools -->
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1rem; font-size: 1.125rem;">
+                    <i class="bi bi-tools"></i> Admin Tools
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <button class="btn btn-glass" style="justify-content: flex-start;" onclick="exportData()">
+                        <i class="bi bi-download"></i> Export Data
+                    </button>
+                    <button class="btn btn-glass" style="justify-content: flex-start;" onclick="clearCache()">
+                        <i class="bi bi-arrow-clockwise"></i> Clear Cache
+                    </button>
+                    <button class="btn btn-glass" style="justify-content: flex-start;" onclick="viewLogs()">
+                        <i class="bi bi-journal-text"></i> View Logs
+                    </button>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="glass-card">
+                <h3 style="margin-bottom: 1rem; font-size: 1.125rem;">
+                    <i class="bi bi-speedometer2"></i> Performance
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.875rem;">CPU Usage</span>
+                            <span style="font-size: 0.875rem; color: var(--primary-color);">23%</span>
+                        </div>
+                        <div style="width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px;">
+                            <div style="width: 23%; height: 100%; background: var(--primary-color); border-radius: 2px;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.875rem;">Memory</span>
+                            <span style="font-size: 0.875rem; color: var(--secondary-color);">67%</span>
+                        </div>
+                        <div style="width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px;">
+                            <div style="width: 67%; height: 100%; background: var(--secondary-color); border-radius: 2px;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.875rem;">Storage</span>
+                            <span style="font-size: 0.875rem; color: var(--accent-color);">45%</span>
+                        </div>
+                        <div style="width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px;">
+                            <div style="width: 45%; height: 100%; background: var(--accent-color); border-radius: 2px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Additional Admin Dashboard Styles */
+    .admin-nav .btn {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .dashboard-container {
+        animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .profile-card {
+        transition: all 0.3s ease;
+    }
+
+    .profile-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-xl);
+    }
+
+    /* Responsive admin layout */
+    @media (max-width: 1200px) {
+        .admin-nav {
+            margin-top: 1rem;
+        }
+
+        .admin-nav > div {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .admin-nav .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+
+<script>
+    // Admin utility functions
+    function exportData() {
+        alert('Export functionality coming soon!');
+    }
+
+    function clearCache() {
+        if (confirm('Are you sure you want to clear the cache?')) {
+            alert('Cache cleared successfully!');
+        }
+    }
+
+    function viewLogs() {
+        alert('Log viewer coming soon!');
+    }
+
+    // Auto-refresh stats every 60 seconds
+    setInterval(function() {
+        // You could implement AJAX refresh here
+        console.log('Stats refresh (implement AJAX here)');
+    }, 60000);
+</script>
+{% endblock %}

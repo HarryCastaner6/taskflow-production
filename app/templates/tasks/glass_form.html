@@ -1,0 +1,543 @@
+{% extends "glass_base.html" %}
+
+{% block title %}{{ title }} - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Form Header -->
+    <div class="glass-card mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">{{ title }}</h1>
+                <p style="color: var(--text-secondary); font-size: 1.125rem;">
+                    {% if title == 'Create Task' %}
+                        Create a new task and organize your work
+                    {% else %}
+                        Update your task details
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <button class="btn btn-glass" data-bs-toggle="modal" data-bs-target="#aiHelperModal">
+                    <i class="bi bi-robot"></i> AI Assistant
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Main Task Form -->
+            <div class="glass-card">
+                {% include 'includes/notifications.html' %}
+
+                <form method="POST" id="taskForm">
+                    {{ form.hidden_tag() }}
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger glass-card mb-3" role="alert" style="padding: 1rem; margin-bottom: 1rem;">
+                            <strong style="color: var(--accent-color);">Please correct the following errors:</strong>
+                            <ul class="mb-0 mt-2" style="color: var(--text-secondary);">
+                                {% for field_name, field_errors in form.errors.items() %}
+                                    {% if field_name != 'csrf_token' %}
+                                        {% for error in field_errors %}
+                                            <li>{{ field_name.replace('_', ' ').title() }}: {{ error }}</li>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <!-- Task Title -->
+                    <div class="form-group">
+                        {{ form.title.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-secondary);">
+                                <i class="bi bi-card-text"></i>
+                            </span>
+                            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""), placeholder="Enter task title", required=True, maxlength="200") }}
+                        </div>
+                        <small class="text-muted">Required - Maximum 200 characters</small>
+                        {% if form.title.errors %}
+                            <div class="text-danger mt-1" style="font-size: 0.875rem;">
+                                {% for error in form.title.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Board Selection -->
+                    <div class="form-group">
+                        {{ form.board_id.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-secondary);">
+                                <i class="bi bi-kanban"></i>
+                            </span>
+                            {{ form.board_id(class="form-control" + (" is-invalid" if form.board_id.errors else ""), required=True) }}
+                        </div>
+                        <small class="text-muted">Required - Select the board for this task</small>
+                        {% if form.board_id.errors %}
+                            <div class="text-danger mt-1" style="font-size: 0.875rem;">
+                                {% for error in form.board_id.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Task Description -->
+                    <div class="form-group">
+                        {{ form.description.label(class="form-label") }}
+                        <div class="position-relative">
+                            {{ form.description(class="form-control", rows="4", placeholder="Enter task description (optional)") }}
+                            <button type="button" class="btn btn-glass position-absolute" style="top: 0.5rem; right: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="enhanceDescription()">
+                                <i class="bi bi-magic"></i> AI Enhance
+                            </button>
+                        </div>
+                        {% if form.description.errors %}
+                            <div class="text-danger mt-1" style="font-size: 0.875rem;">
+                                {% for error in form.description.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Task Details Row -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                {{ form.due_date.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-secondary);">
+                                        <i class="bi bi-calendar-event"></i>
+                                    </span>
+                                    {{ form.due_date(class="form-control", type="datetime-local", value=form.due_date.data.strftime('%Y-%m-%dT%H:%M') if form.due_date.data else '') }}
+                                </div>
+                                <small class="text-muted">Optional - Select date and time</small>
+                                {% if form.due_date.errors %}
+                                    <div class="text-danger mt-1" style="font-size: 0.875rem;">
+                                        {% for error in form.due_date.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                {{ form.priority.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-secondary);">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                    </span>
+                                    {{ form.priority(class="form-control") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                {{ form.status.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-secondary);">
+                                        <i class="bi bi-check-circle"></i>
+                                    </span>
+                                    {{ form.status(class="form-control") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tags Section -->
+                    <div class="form-group">
+                        {{ form.tags.label(class="form-label") }}
+                        <div id="tag-container" class="form-control p-2 d-flex flex-wrap align-items-center" style="min-height: 48px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border);">
+                            <i class="bi bi-tags text-muted me-2"></i>
+                            <input type="text" id="tag-input" class="border-0 flex-grow-1 p-1" placeholder="Add tags..." style="outline: none; min-width: 100px; background: transparent; color: var(--text-primary);">
+                        </div>
+                        {{ form.tags(style="display: none;") }}
+                        <small class="text-muted">Type tag names and press Enter or Space to add them</small>
+
+                        <div id="suggested-tags" class="mt-2" style="display: none;">
+                            <small class="text-muted">Suggested tags:</small>
+                            <div id="tag-suggestions" class="d-flex flex-wrap gap-1 mt-1"></div>
+                        </div>
+
+                        {% if form.tags.errors %}
+                            <div class="text-danger mt-1" style="font-size: 0.875rem;">
+                                {% for error in form.tags.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between align-items-center pt-3" style="border-top: 1px solid var(--glass-border);">
+                        <div>
+                            {{ form.submit(class="btn btn-primary") }}
+                            <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-glass ms-2">Cancel</a>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-glass" onclick="previewTask()">
+                                <i class="bi bi-eye"></i> Preview
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="col-lg-4">
+            <!-- Task Tips -->
+            <div class="glass-card mb-4">
+                <h5 class="mb-3">
+                    <i class="bi bi-lightbulb text-warning"></i> Task Tips
+                </h5>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="tip-item">
+                        <h6 style="font-size: 0.875rem; margin-bottom: 0.25rem;">
+                            <i class="bi bi-check-circle text-success"></i> Clear Titles
+                        </h6>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0;">
+                            Use action words and be specific about what needs to be done.
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <h6 style="font-size: 0.875rem; margin-bottom: 0.25rem;">
+                            <i class="bi bi-clock text-info"></i> Set Deadlines
+                        </h6>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0;">
+                            Adding due dates helps with prioritization and time management.
+                        </p>
+                    </div>
+                    <div class="tip-item">
+                        <h6 style="font-size: 0.875rem; margin-bottom: 0.25rem;">
+                            <i class="bi bi-tags text-primary"></i> Use Tags
+                        </h6>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0;">
+                            Tags make it easier to filter and find related tasks later.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="glass-card">
+                <h5 class="mb-3">
+                    <i class="bi bi-lightning text-warning"></i> Quick Actions
+                </h5>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <button type="button" class="btn btn-glass" style="justify-content: flex-start;" onclick="fillTemplate('meeting')">
+                        <i class="bi bi-calendar-event"></i> Meeting Template
+                    </button>
+                    <button type="button" class="btn btn-glass" style="justify-content: flex-start;" onclick="fillTemplate('project')">
+                        <i class="bi bi-folder"></i> Project Template
+                    </button>
+                    <button type="button" class="btn btn-glass" style="justify-content: flex-start;" onclick="fillTemplate('review')">
+                        <i class="bi bi-clipboard-check"></i> Review Template
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Helper Modal -->
+<div class="modal fade" id="aiHelperModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background: var(--glass-bg); border: 1px solid var(--glass-border); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--glass-border);">
+                <h5 class="modal-title">
+                    <i class="bi bi-robot text-primary"></i> AI Task Assistant
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: invert(1);"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">What do you need help with?</label>
+                    <textarea class="form-control" id="aiPrompt" rows="3" placeholder="Describe what you want to accomplish..."></textarea>
+                </div>
+                <div class="d-flex gap-2 mb-3">
+                    <button class="btn btn-glass" onclick="askAI('suggest_title')">Suggest Title</button>
+                    <button class="btn btn-glass" onclick="askAI('break_down')">Break Down Task</button>
+                    <button class="btn btn-glass" onclick="askAI('estimate_time')">Estimate Time</button>
+                </div>
+                <div id="aiResponse" class="glass-card" style="display: none; padding: 1rem;">
+                    <h6>AI Suggestion:</h6>
+                    <div id="aiResponseText"></div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--glass-border);">
+                <button type="button" class="btn btn-glass" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="applyAISuggestion()">Apply Suggestion</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .input-group-text {
+        border-top-left-radius: 12px !important;
+        border-bottom-left-radius: 12px !important;
+    }
+
+    .input-group .form-control {
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        border-left: none;
+    }
+
+    .input-group .form-control:focus {
+        border-left: none;
+        box-shadow: none;
+    }
+
+    .input-group-text:focus-within {
+        border-color: var(--primary-color);
+    }
+
+    .tip-item {
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        border-left: 3px solid var(--primary-color);
+    }
+
+    #tag-container .badge {
+        background: var(--primary-color) !important;
+        color: white;
+        margin-right: 0.5rem;
+        margin-bottom: 0.25rem;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    #tag-input::placeholder {
+        color: var(--text-muted);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tag management system
+    const tagInput = document.getElementById('tag-input');
+    const tagContainer = document.getElementById('tag-container');
+    const hiddenTagsField = document.getElementById('tags');
+    const suggestedTagsContainer = document.getElementById('suggested-tags');
+    const tagSuggestions = document.getElementById('tag-suggestions');
+
+    let currentTags = [];
+    const commonTags = ['work', 'personal', 'urgent', 'important', 'project', 'meeting', 'deadline', 'review', 'bug', 'feature', 'documentation', 'testing'];
+
+    // Initialize existing tags if editing
+    if (hiddenTagsField.value) {
+        const existingTags = hiddenTagsField.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+        existingTags.forEach(tag => addTag(tag));
+    }
+
+    function showSuggestedTags() {
+        tagSuggestions.innerHTML = '';
+        const filteredTags = commonTags.filter(tag =>
+            !currentTags.includes(tag) &&
+            tag.toLowerCase().includes(tagInput.value.toLowerCase())
+        );
+
+        if (filteredTags.length > 0) {
+            filteredTags.forEach(tag => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-glass';
+                button.style.fontSize = '0.75rem';
+                button.style.padding = '0.25rem 0.5rem';
+                button.textContent = tag;
+                button.onclick = () => {
+                    addTag(tag);
+                    tagInput.value = '';
+                    hideSuggestedTags();
+                };
+                tagSuggestions.appendChild(button);
+            });
+            suggestedTagsContainer.style.display = 'block';
+        } else {
+            hideSuggestedTags();
+        }
+    }
+
+    function hideSuggestedTags() {
+        suggestedTagsContainer.style.display = 'none';
+    }
+
+    function addTag(tagName) {
+        tagName = tagName.trim();
+        if (tagName && !currentTags.includes(tagName)) {
+            currentTags.push(tagName);
+
+            const tagChip = document.createElement('span');
+            tagChip.className = 'badge d-flex align-items-center';
+            tagChip.innerHTML = `
+                ${tagName}
+                <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 0.6em;" aria-label="Remove tag"></button>
+            `;
+
+            const removeBtn = tagChip.querySelector('.btn-close');
+            removeBtn.onclick = () => {
+                currentTags = currentTags.filter(tag => tag !== tagName);
+                tagChip.remove();
+                updateHiddenField();
+            };
+
+            tagContainer.insertBefore(tagChip, tagInput);
+            updateHiddenField();
+        }
+    }
+
+    function updateHiddenField() {
+        hiddenTagsField.value = currentTags.join(', ');
+    }
+
+    tagInput.addEventListener('input', function(e) {
+        if (e.target.value.trim()) {
+            showSuggestedTags();
+        } else {
+            hideSuggestedTags();
+        }
+    });
+
+    tagInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === ',') {
+            e.preventDefault();
+            const value = e.target.value.trim();
+            if (value) {
+                addTag(value);
+                e.target.value = '';
+                hideSuggestedTags();
+            }
+        } else if (e.key === 'Backspace' && !e.target.value && currentTags.length > 0) {
+            const lastTag = currentTags.pop();
+            const lastChip = tagContainer.querySelector('.badge:last-of-type');
+            if (lastChip) lastChip.remove();
+            updateHiddenField();
+        }
+    });
+
+    tagInput.addEventListener('blur', function() {
+        setTimeout(hideSuggestedTags, 200);
+    });
+
+    tagContainer.addEventListener('click', function() {
+        tagInput.focus();
+    });
+
+    // Make functions globally available
+    window.enhanceDescription = enhanceDescription;
+    window.previewTask = previewTask;
+    window.fillTemplate = fillTemplate;
+    window.askAI = askAI;
+    window.applyAISuggestion = applyAISuggestion;
+});
+
+// AI and helper functions
+function enhanceDescription() {
+    const description = document.getElementById('description');
+    if (!description.value.trim()) {
+        alert('Please enter some description text first.');
+        return;
+    }
+
+    // Mock AI enhancement
+    const enhanced = description.value + ' [AI Enhanced: Added clarity and structure]';
+    description.value = enhanced;
+
+    // Show feedback
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = 'Description enhanced with AI!';
+    toast.style.cssText = `
+        position: fixed; top: 20px; right: 20px;
+        background: var(--primary-color); color: white;
+        padding: 1rem; border-radius: 8px; z-index: 9999;
+        animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function previewTask() {
+    const title = document.getElementById('title').value;
+    const description = document.getElementById('description').value;
+    const priority = document.getElementById('priority').value;
+
+    if (!title.trim()) {
+        alert('Please enter a task title first.');
+        return;
+    }
+
+    alert(`Task Preview:\nTitle: ${title}\nDescription: ${description || 'No description'}\nPriority: ${priority}`);
+}
+
+function fillTemplate(type) {
+    const titleField = document.getElementById('title');
+    const descriptionField = document.getElementById('description');
+
+    const templates = {
+        meeting: {
+            title: 'Team Meeting - [Date]',
+            description: 'Agenda:\n- Review progress\n- Discuss blockers\n- Plan next steps\n\nParticipants:\n- [Add names]\n\nAction items will be tracked separately.'
+        },
+        project: {
+            title: '[Project Name] - Implementation',
+            description: 'Project goals:\n- [Define objectives]\n\nDeliverables:\n- [List key deliverables]\n\nTimeline:\n- [Add milestones]\n\nResources needed:\n- [List requirements]'
+        },
+        review: {
+            title: 'Code/Document Review - [Item Name]',
+            description: 'Review checklist:\n- [ ] Functionality\n- [ ] Code quality\n- [ ] Documentation\n- [ ] Tests\n- [ ] Performance\n\nNotes:\n[Add review comments]'
+        }
+    };
+
+    const template = templates[type];
+    if (template) {
+        titleField.value = template.title;
+        descriptionField.value = template.description;
+    }
+}
+
+function askAI(action) {
+    const prompt = document.getElementById('aiPrompt').value;
+    const responseDiv = document.getElementById('aiResponse');
+    const responseText = document.getElementById('aiResponseText');
+
+    // Mock AI responses
+    const responses = {
+        suggest_title: 'Based on your description, I suggest: "Complete Project Documentation Review"',
+        break_down: 'I recommend breaking this into smaller tasks:\n1. Research requirements\n2. Draft initial version\n3. Review with team\n4. Finalize and publish',
+        estimate_time: 'Based on similar tasks, this should take approximately 2-3 hours to complete.'
+    };
+
+    responseText.textContent = responses[action] || 'AI processing... (Feature coming soon!)';
+    responseDiv.style.display = 'block';
+}
+
+function applyAISuggestion() {
+    alert('AI suggestion applied! (Demo functionality)');
+}
+
+// Add slide-in animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

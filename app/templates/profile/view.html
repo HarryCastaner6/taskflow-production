@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - Task Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-person"></i> My Profile</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="bi bi-person-circle text-primary" style="font-size: 5rem;"></i>
+                            <h5 class="mt-2">{{ user.username }}</h5>
+                            <p class="text-muted">{{ user.email }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <h6>Account Information</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Username:</strong></td>
+                                <td>{{ user.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Member Since:</strong></td>
+                                <td>{{ user.created_at.strftime('%B %d, %Y') }}</td>
+                            </tr>
+                        </table>
+
+                        <div class="mt-3">
+                            <a href="{{ url_for('profile.edit_profile') }}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-pencil"></i> Edit Profile
+                            </a>
+                            <a href="{{ url_for('profile.change_password') }}" class="btn btn-secondary btn-sm">
+                                <i class="bi bi-key"></i> Change Password
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="bi bi-bar-chart"></i> Task Statistics</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Total Tasks:</span>
+                        <strong>{{ stats.total_tasks }}</strong>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Completed:</span>
+                        <strong class="text-success">{{ stats.completed_tasks }}</strong>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Pending:</span>
+                        <strong class="text-warning">{{ stats.pending_tasks }}</strong>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <div class="h4 text-primary">{{ stats.completion_rate }}%</div>
+                    <small class="text-muted">Completion Rate</small>
+                </div>
+
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: {{ stats.completion_rate }}%"
+                         aria-valuenow="{{ stats.completion_rate }}"
+                         aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body text-center">
+                <h6><i class="bi bi-trophy"></i> Achievement</h6>
+                {% if stats.completion_rate >= 80 %}
+                <div class="text-success">
+                    <i class="bi bi-award-fill" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">Task Master!</p>
+                    <small>High completion rate</small>
+                </div>
+                {% elif stats.completion_rate >= 50 %}
+                <div class="text-warning">
+                    <i class="bi bi-star-fill" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">Getting There!</p>
+                    <small>Good progress</small>
+                </div>
+                {% else %}
+                <div class="text-info">
+                    <i class="bi bi-rocket" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">Just Started!</p>
+                    <small>Keep going!</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

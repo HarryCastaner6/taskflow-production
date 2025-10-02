@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Board Access - Admin - Task Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="bi bi-shield-lock"></i> Manage Board Access
+            </h1>
+            <div class="admin-nav">
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('admin.manage_users') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-people"></i> Users
+                    </a>
+                    <a href="{{ url_for('admin.manage_boards') }}" class="btn btn-primary">
+                        <i class="bi bi-kanban"></i> Boards
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('admin.admin_dashboard') }}">Admin</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('admin.manage_boards') }}">Boards</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('admin.edit_board', board_id=board.id) }}">{{ board.name }}</a>
+        </li>
+        <li class="breadcrumb-item active">Manage Access</li>
+    </ol>
+</nav>
+
+<!-- Board Info Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                {% if board.is_archived %}
+                                    <i class="bi bi-archive text-muted" style="font-size: 2rem;"></i>
+                                {% else %}
+                                    <i class="bi bi-kanban text-primary" style="font-size: 2rem;"></i>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h4 class="mb-1">{{ board.name }}</h4>
+                                <p class="text-muted mb-0">{{ board.description or 'No description' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="mb-2">
+                            {% if board.is_archived %}
+                                <span class="badge bg-secondary">Archived</span>
+                            {% else %}
+                                <span class="badge bg-success">Active</span>
+                            {% endif %}
+                            <span class="badge bg-info">{{ board.visibility|title }}</span>
+                        </div>
+                        <div class="text-muted small">
+                            <div><strong>Owner:</strong> {{ board.owner.username }}</div>
+                            <div><strong>Members:</strong> {{ board.members|length }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Current Members -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-people-fill text-primary"></i>
+                    Current Members
+                    <span class="badge bg-secondary">{{ board.members|length + 1 }}</span>
+                </h5>
+                <button type="button" class="btn btn-outline-danger btn-sm" id="bulkRemoveBtn" disabled>
+                    <i class="bi bi-person-dash"></i> Remove Selected
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Board Owner (always first) -->
+                <div class="list-group">
+                    <div class="list-group-item">
+                        <div class="d-flex align-items-center">
+                            <div class="form-check me-3">
+                                <input class="form-check-input" type="checkbox" disabled>
+                            </div>
+                            <div class="avatar-sm me-3">
+                                <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center"
+                                     style="width: 40px; height: 40px;">
+                                    {{ board.owner.username[0].upper() }}
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">{{ board.owner.username }}</h6>
+                                        <small class="text-muted">{{ board.owner.email }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-warning">Owner</span>
+                                        {% if board.owner.is_admin %}
+                                        <span class="badge bg-danger">Admin</span>
+                                        {% endif %}
+                                        <div class="small text-muted">
+                                            Since {{ board.created_at.strftime('%Y-%m-%d') }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Board Members -->
+                    {% for member in board.members %}
+                    <div class="list-group-item">
+                        <div class="d-flex align-items-center">
+                            <div class="form-check me-3">
+                                <input class="form-check-input member-checkbox" type="checkbox"
+                                       value="{{ member.id }}" onchange="updateBulkRemoveButton()">
+                            </div>
+                            <div class="avatar-sm me-3">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                     style="width: 40px; height: 40px;">
+                                    {{ member.username[0].upper() }}
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0">{{ member.username }}</h6>
+                                        <small class="text-muted">{{ member.email }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        {% if member.is_admin %}
+                                        <span class="badge bg-danger">Admin</span>
+                                        {% endif %}
+                                        <span class="badge bg-info">Member</span>
+                                        <div class="small text-muted">
+                                            {% if member.board_memberships.filter_by(board_id=board.id).first() %}
+                                                Since {{ member.board_memberships.filter_by(board_id=board.id).first().created_at.strftime('%Y-%m-%d') }}
+                                            {% else %}
+                                                Recently added
+                                            {% endif %}
+                                        </div>
+                                        <div class="mt-1">
+                                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                                    onclick="removeMember({{ member.id }}, '{{ member.username }}')">
+                                                <i class="bi bi-person-dash"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if board.members|length == 0 %}
+                    <div class="list-group-item text-center text-muted">
+                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">No additional members</p>
+                        <small>Only the board owner has access</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Access Statistics -->
+        <div class="card shadow mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-graph-up"></i> Access Statistics
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h5 class="text-primary">{{ board.members|length + 1 }}</h5>
+                        <small class="text-muted">Total Users</small>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-warning">1</h5>
+                        <small class="text-muted">Owners</small>
+                    </div>
+                    <div class="col-4">
+                        <h5 class="text-info">{{ board.members|length }}</h5>
+                        <small class="text-muted">Members</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="small text-muted">
+                    <div><strong>Last Access:</strong> {{ board.updated_at.strftime('%Y-%m-%d %H:%M') if board.updated_at else 'No recent activity' }}</div>
+                    <div><strong>Visibility:</strong> {{ board.visibility|title }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add New Members -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-plus text-success"></i>
+                    Add New Members
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Search Users -->
+                <div class="mb-3">
+                    <label for="userSearch" class="form-label">Search Users</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="userSearch"
+                               placeholder="Search by username or email...">
+                        <button type="button" class="btn btn-outline-primary" onclick="searchUsers()">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Available Users -->
+                <form method="POST" id="addMembersForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="add_members">
+
+                    <div class="mb-3">
+                        <label class="form-label">Available Users</label>
+                        <div class="available-users-list" style="max-height: 300px; overflow-y: auto;">
+                            {% set current_member_ids = board.members|map(attribute='id')|list %}
+                            {% for user in available_users %}
+                            {% if user.id != board.owner_id and user.id not in current_member_ids %}
+                            <div class="form-check p-2 border-bottom user-item">
+                                <input class="form-check-input" type="checkbox" name="new_members"
+                                       value="{{ user.id }}" id="user_{{ user.id }}">
+                                <label class="form-check-label w-100" for="user_{{ user.id }}">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm me-3">
+                                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                                 style="width: 32px; height: 32px;">
+                                                {{ user.username[0].upper() }}
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h6 class="mb-0">{{ user.username }}</h6>
+                                                    <small class="text-muted">{{ user.email }}</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    {% if user.is_admin %}
+                                                    <span class="badge bg-danger badge-sm">Admin</span>
+                                                    {% endif %}
+                                                    {% if user.is_active %}
+                                                    <span class="badge bg-success badge-sm">Active</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary badge-sm">Inactive</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+
+                            {% if available_users|length == 0 or (available_users|rejectattr('id', 'equalto', board.owner_id)|rejectattr('id', 'in', current_member_ids)|list|length == 0) %}
+                            <div class="text-center text-muted p-4">
+                                <i class="bi bi-people" style="font-size: 2rem;"></i>
+                                <p class="mt-2 mb-0">No available users</p>
+                                <small>All users are already members of this board</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="sendInviteEmail" name="send_invite_email" checked>
+                            <label class="form-check-label" for="sendInviteEmail">
+                                <strong>Send Invitation Email</strong>
+                            </label>
+                            <div class="form-text">Notify new members about board access</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success" id="addMembersBtn" disabled>
+                            <i class="bi bi-person-plus"></i> Add Selected Members
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card shadow mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightning"></i> Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="copyInviteLink()">
+                        <i class="bi bi-link-45deg"></i> Copy Invite Link
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="exportMemberList()">
+                        <i class="bi bi-download"></i> Export Member List
+                    </button>
+                    <a href="{{ url_for('admin.edit_board', board_id=board.id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-gear"></i> Board Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Member Confirmation Modal -->
+<div class="modal fade" id="removeMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Remove Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove <strong id="removeMemberName"></strong> from this board?</p>
+                <p class="text-warning small">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    The user will lose access to all board content and tasks.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="removeMemberForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="remove_member">
+                    <input type="hidden" name="member_id" id="removeMemberId">
+                    <button type="submit" class="btn btn-danger">Remove Member</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Remove Confirmation Modal -->
+<div class="modal fade" id="bulkRemoveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Remove Multiple Members</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to remove <strong id="bulkRemoveCount"></strong> selected members from this board?</p>
+                <p class="text-warning small">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    These users will lose access to all board content and tasks.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="bulkRemoveForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="bulk_remove_members">
+                    <input type="hidden" name="member_ids" id="bulkRemoveMemberIds">
+                    <button type="submit" class="btn btn-danger">Remove Members</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Update add members button state
+document.querySelectorAll('input[name="new_members"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const checkedBoxes = document.querySelectorAll('input[name="new_members"]:checked');
+        const addBtn = document.getElementById('addMembersBtn');
+        addBtn.disabled = checkedBoxes.length === 0;
+
+        if (checkedBoxes.length > 0) {
+            addBtn.innerHTML = `<i class="bi bi-person-plus"></i> Add ${checkedBoxes.length} Member${checkedBoxes.length > 1 ? 's' : ''}`;
+        } else {
+            addBtn.innerHTML = '<i class="bi bi-person-plus"></i> Add Selected Members';
+        }
+    });
+});
+
+// Update bulk remove button state
+function updateBulkRemoveButton() {
+    const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
+    const bulkBtn = document.getElementById('bulkRemoveBtn');
+    bulkBtn.disabled = checkedBoxes.length === 0;
+
+    if (checkedBoxes.length > 0) {
+        bulkBtn.innerHTML = `<i class="bi bi-person-dash"></i> Remove ${checkedBoxes.length} Member${checkedBoxes.length > 1 ? 's' : ''}`;
+    } else {
+        bulkBtn.innerHTML = '<i class="bi bi-person-dash"></i> Remove Selected';
+    }
+}
+
+// Bulk remove functionality
+document.getElementById('bulkRemoveBtn').addEventListener('click', function() {
+    const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
+    const memberIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+    document.getElementById('bulkRemoveCount').textContent = memberIds.length;
+    document.getElementById('bulkRemoveMemberIds').value = memberIds.join(',');
+
+    new bootstrap.Modal(document.getElementById('bulkRemoveModal')).show();
+});
+
+// Remove single member
+function removeMember(memberId, memberName) {
+    document.getElementById('removeMemberName').textContent = memberName;
+    document.getElementById('removeMemberId').value = memberId;
+    new bootstrap.Modal(document.getElementById('removeMemberModal')).show();
+}
+
+// Search users functionality
+function searchUsers() {
+    const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+    const userItems = document.querySelectorAll('.user-item');
+
+    userItems.forEach(item => {
+        const label = item.querySelector('label');
+        const username = label.querySelector('h6').textContent.toLowerCase();
+        const email = label.querySelector('small').textContent.toLowerCase();
+
+        if (username.includes(searchTerm) || email.includes(searchTerm)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Real-time search
+document.getElementById('userSearch').addEventListener('input', searchUsers);
+
+// Copy invite link
+function copyInviteLink() {
+    const inviteLink = `${window.location.origin}/boards/{{ board.id }}/join?invite=${btoa('{{ board.id }}')}`;
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(inviteLink).then(() => {
+            // Show success message
+            const toast = document.createElement('div');
+            toast.className = 'toast position-fixed top-0 end-0 m-3';
+            toast.innerHTML = `
+                <div class="toast-header text-bg-success">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong class="me-auto">Success</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    Invite link copied to clipboard!
+                </div>
+            `;
+            document.body.appendChild(toast);
+            new bootstrap.Toast(toast).show();
+        });
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = inviteLink;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Invite link copied to clipboard!');
+    }
+}
+
+// Export member list
+function exportMemberList() {
+    const members = [
+        {
+            name: '{{ board.owner.username }}',
+            email: '{{ board.owner.email }}',
+            role: 'Owner',
+            joinDate: '{{ board.created_at.strftime("%Y-%m-%d") }}'
+        }
+        {% for member in board.members %},
+        {
+            name: '{{ member.username }}',
+            email: '{{ member.email }}',
+            role: 'Member',
+            joinDate: '{{ member.board_memberships.filter_by(board_id=board.id).first().created_at.strftime("%Y-%m-%d") if member.board_memberships.filter_by(board_id=board.id).first() else "Recent" }}'
+        }
+        {% endfor %}
+    ];
+
+    const csv = 'Name,Email,Role,Join Date\n' +
+                members.map(m => `"${m.name}","${m.email}","${m.role}","${m.joinDate}"`).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `{{ board.name }}_members_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Form submission with loading states
+document.getElementById('addMembersForm').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding Members...';
+
+    // Re-enable button after 10 seconds as fallback
+    setTimeout(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }, 10000);
+});
+
+// Auto-refresh member list every 30 seconds
+setInterval(function() {
+    if (!document.querySelector('.modal.show')) { // Only refresh if no modal is open
+        location.reload();
+    }
+}, 30000);
+</script>
+
+<style>
+.admin-nav .btn-group .btn {
+    border-radius: 0;
+}
+
+.admin-nav .btn-group .btn:first-child {
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+.admin-nav .btn-group .btn:last-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+.avatar-sm {
+    flex-shrink: 0;
+}
+
+.available-users-list {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.user-item {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.user-item:hover {
+    background-color: #f8f9fa;
+}
+
+.user-item:last-child {
+    border-bottom: none !important;
+}
+
+.badge-sm {
+    font-size: 0.7em;
+    padding: 0.25em 0.5em;
+}
+
+.form-check-label {
+    cursor: pointer;
+}
+
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* Loading state for form submission */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Toast positioning */
+.toast {
+    z-index: 9999;
+}
+</style>
+{% endblock %}

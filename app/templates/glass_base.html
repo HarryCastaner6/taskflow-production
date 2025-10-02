@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Glass Task Board{% endblock %}</title>
+
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <!-- Glass Morphism CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/glassmorphism.css') }}">
+
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-gradient-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="glass-nav">
+        <div class="nav-container">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-brand">
+                <i class="bi bi-layers"></i> TaskFlow
+            </a>
+
+            <div class="nav-menu">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+                        <i class="bi bi-house"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('tasks.list_tasks') }}" class="nav-link {% if 'tasks' in request.endpoint %}active{% endif %}">
+                        <i class="bi bi-check2-square"></i> Tasks
+                    </a>
+                    <a href="{{ url_for('main.boards') }}" class="nav-link {% if 'boards' in request.endpoint %}active{% endif %}">
+                        <i class="bi bi-kanban"></i> Boards
+                    </a>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin.admin_dashboard') }}" class="nav-link {% if 'admin' in request.endpoint %}active{% endif %}">
+                        <i class="bi bi-shield-lock"></i> Admin
+                    </a>
+                    {% endif %}
+
+                    <div class="user-menu">
+                        <button class="btn btn-glass" onclick="toggleUserDropdown()">
+                            <i class="bi bi-person-circle"></i>
+                            {{ current_user.username }}
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div id="userDropdown" class="dropdown-menu" style="display: none;">
+                            <a href="{{ url_for('profile.view_profile') }}" class="dropdown-item">
+                                <i class="bi bi-person"></i> Profile
+                            </a>
+                            <a href="{{ url_for('profile.edit_profile') }}" class="dropdown-item">
+                                <i class="bi bi-gear"></i> Settings
+                            </a>
+                            <hr class="dropdown-divider">
+                            <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-glass">
+                        <i class="bi bi-box-arrow-in-right"></i> Login
+                    </a>
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
+                        <i class="bi bi-person-plus"></i> Sign Up
+                    </a>
+                {% endif %}
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <i class="bi bi-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="notifications-container">
+                {% for category, message in messages %}
+                    <div class="notification {{ category }}" role="alert">
+                        <div class="notification-content">
+                            {% if category == 'success' %}
+                                <i class="bi bi-check-circle-fill"></i>
+                            {% elif category == 'danger' or category == 'error' %}
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            {% elif category == 'warning' %}
+                                <i class="bi bi-exclamation-circle-fill"></i>
+                            {% else %}
+                                <i class="bi bi-info-circle-fill"></i>
+                            {% endif %}
+                            <span>{{ message }}</span>
+                        </div>
+                        <button class="notification-close" onclick="this.parentElement.remove()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
+
+    <style>
+        /* Additional inline styles for dropdown and notifications */
+        .user-menu {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0.5rem;
+            min-width: 200px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .dropdown-divider {
+            margin: 0.5rem 0;
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .notifications-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .notification {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            min-width: 300px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: white;
+        }
+
+        .notification.success {
+            border-color: rgba(0, 212, 170, 0.3);
+            background: linear-gradient(145deg, rgba(0, 212, 170, 0.1), rgba(15, 23, 42, 0.95));
+        }
+
+        .notification.success i {
+            color: #00d4aa;
+        }
+
+        .notification.danger, .notification.error {
+            border-color: rgba(245, 101, 101, 0.3);
+            background: linear-gradient(145deg, rgba(245, 101, 101, 0.1), rgba(15, 23, 42, 0.95));
+        }
+
+        .notification.danger i, .notification.error i {
+            color: #f56565;
+        }
+
+        .notification.warning {
+            border-color: rgba(251, 191, 36, 0.3);
+            background: linear-gradient(145deg, rgba(251, 191, 36, 0.1), rgba(15, 23, 42, 0.95));
+        }
+
+        .notification.warning i {
+            color: #fbbf24;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.25rem;
+            transition: color 0.2s ease;
+        }
+
+        .notification-close:hover {
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .nav-menu {
+                position: fixed;
+                top: 60px;
+                left: -100%;
+                width: 100%;
+                height: calc(100vh - 60px);
+                background: rgba(15, 23, 42, 0.98);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                flex-direction: column;
+                padding: 2rem;
+                transition: left 0.3s ease;
+            }
+
+            .nav-menu.active {
+                left: 0;
+            }
+        }
+    </style>
+
+    <script>
+        function toggleUserDropdown() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.querySelector('.nav-menu');
+            menu.classList.toggle('active');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const userMenu = document.querySelector('.user-menu');
+            const dropdown = document.getElementById('userDropdown');
+
+            if (userMenu && dropdown && !userMenu.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Auto-dismiss notifications after 5 seconds
+        setTimeout(() => {
+            document.querySelectorAll('.notification').forEach(notification => {
+                notification.style.animation = 'slideOut 0.3s ease forwards';
+                setTimeout(() => notification.remove(), 300);
+            });
+        }, 5000);
+    </script>
+
+    <!-- Footer -->
+    <footer style="margin-top: 4rem; padding: 2rem 0; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+        <div style="text-align: center; color: var(--text-secondary); font-size: 0.875rem;">
+            <p style="margin-bottom: 0.5rem;">
+                <strong>TaskFlow</strong> - Professional Task Management System
+            </p>
+            <p style="margin-bottom: 0.5rem;">
+                © 2024 <strong>Mindscape Media</strong>. All rights reserved.
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                <a href="#" style="color: var(--text-secondary); text-decoration: none;">
+                    <i class="bi bi-envelope"></i> Contact
+                </a>
+                <a href="#" style="color: var(--text-secondary); text-decoration: none;">
+                    <i class="bi bi-globe"></i> mindscapemedia.com
+                </a>
+                <a href="#" style="color: var(--text-secondary); text-decoration: none;">
+                    <i class="bi bi-linkedin"></i> LinkedIn
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}My Tasks - Task Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>My Tasks</h1>
+    <a href="{{ url_for('tasks.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Task
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <input type="text" name="search" class="form-control" placeholder="Search tasks..."
+                       value="{{ request.args.get('search', '') }}">
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select">
+                    <option value="" {% if not request.args.get('status') %}selected{% endif %}>All Status</option>
+                    <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="archived" {% if request.args.get('status') == 'archived' %}selected{% endif %}>Archived</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="priority" class="form-select">
+                    <option value="" {% if not request.args.get('priority') %}selected{% endif %}>All Priority</option>
+                    <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>Low</option>
+                    <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>High</option>
+                    <option value="urgent" {% if request.args.get('priority') == 'urgent' %}selected{% endif %}>Urgent</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="sort" class="form-select">
+                    <option value="created_at" {% if request.args.get('sort') == 'created_at' %}selected{% endif %}>Date Created</option>
+                    <option value="due_date" {% if request.args.get('sort') == 'due_date' %}selected{% endif %}>Due Date</option>
+                    <option value="priority" {% if request.args.get('sort') == 'priority' %}selected{% endif %}>Priority</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <button type="button" class="btn btn-secondary" id="clearFilters">Clear</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if tasks.items %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>Title</th>
+                <th>Priority</th>
+                <th>Due Date</th>
+                <th>Tags</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in tasks.items %}
+            <tr {% if task.is_overdue() %}class="table-danger"{% endif %}>
+                <td>
+                    <button class="btn btn-sm toggle-complete"
+                            data-task-id="{{ task.id }}"
+                            title="{% if task.status == 'completed' %}Mark as pending{% else %}Mark as completed{% endif %}"
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top">
+                        {% if task.status == 'completed' %}
+                        <i class="bi bi-check-square-fill text-success"></i>
+                        {% else %}
+                        <i class="bi bi-square"></i>
+                        {% endif %}
+                    </button>
+                </td>
+                <td>
+                    <a href="{{ url_for('tasks.edit', task_id=task.id) }}"
+                       class="{% if task.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">
+                        {{ task.title }}
+                    </a>
+                    {% if task.description %}
+                    <br><small class="text-muted">{{ task.description[:50] }}{% if task.description|length > 50 %}...{% endif %}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if task.priority == 'urgent' %}
+                    <span class="badge bg-danger">Urgent</span>
+                    {% elif task.priority == 'high' %}
+                    <span class="badge bg-warning">High</span>
+                    {% elif task.priority == 'medium' %}
+                    <span class="badge bg-info">Medium</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Low</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if task.due_date %}
+                        {{ task.due_date.strftime('%Y-%m-%d %H:%M') }}
+                        {% if task.is_overdue() %}
+                        <span class="badge bg-danger">Overdue</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% for tag in task.tags %}
+                    <span class="badge bg-secondary">{{ tag.name }}</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('tasks.edit', task_id=task.id) }}"
+                           class="btn btn-outline-primary"
+                           title="Edit task"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('tasks.archive', task_id=task.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit"
+                                    class="btn btn-outline-secondary"
+                                    title="Archive task"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top">
+                                <i class="bi bi-archive"></i>
+                            </button>
+                        </form>
+                        <button type="button"
+                                class="btn btn-outline-danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteModal{{ task.id }}"
+                                title="Delete task permanently">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if tasks.pages > 1 %}
+<nav aria-label="Task pagination">
+    <ul class="pagination justify-content-center">
+        {% if tasks.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('tasks.list_tasks', page=tasks.prev_num, **request.args) }}">Previous</a>
+        </li>
+        {% endif %}
+
+        {% for page_num in tasks.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                {% if page_num != tasks.page %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('tasks.list_tasks', page=page_num, **request.args) }}">{{ page_num }}</a>
+                </li>
+                {% else %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if tasks.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('tasks.list_tasks', page=tasks.next_num, **request.args) }}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-info text-center">
+    <h4>No tasks found</h4>
+    <p>Start by creating your first task!</p>
+    <a href="{{ url_for('tasks.create') }}" class="btn btn-primary">Create Task</a>
+</div>
+{% endif %}
+
+<!-- Delete Confirmation Modals -->
+{% for task in tasks.items %}
+<div class="modal fade" id="deleteModal{{ task.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ task.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel{{ task.id }}">
+                    <i class="bi bi-exclamation-triangle text-danger"></i> Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete this task?</p>
+                <div class="alert alert-warning">
+                    <strong>{{ task.title }}</strong>
+                    {% if task.description %}
+                    <br><small>{{ task.description[:100] }}{% if task.description|length > 100 %}...{% endif %}</small>
+                    {% endif %}
+                </div>
+                <p class="text-muted"><small>This action cannot be undone.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('tasks.delete', task_id=task.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Delete Task
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Preserve filter state in localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    const filterForm = document.querySelector('form');
+    const searchInput = document.querySelector('input[name="search"]');
+    const statusSelect = document.querySelector('select[name="status"]');
+    const prioritySelect = document.querySelector('select[name="priority"]');
+    const sortSelect = document.querySelector('select[name="sort"]');
+
+    // Load saved filter state
+    function loadFilterState() {
+        const savedFilters = JSON.parse(localStorage.getItem('taskFilters') || '{}');
+
+        if (savedFilters.search && searchInput) {
+            searchInput.value = savedFilters.search;
+        }
+        if (savedFilters.status && statusSelect) {
+            statusSelect.value = savedFilters.status;
+        }
+        if (savedFilters.priority && prioritySelect) {
+            prioritySelect.value = savedFilters.priority;
+        }
+        if (savedFilters.sort && sortSelect) {
+            sortSelect.value = savedFilters.sort;
+        }
+    }
+
+    // Save filter state
+    function saveFilterState() {
+        const filters = {
+            search: searchInput ? searchInput.value : '',
+            status: statusSelect ? statusSelect.value : '',
+            priority: prioritySelect ? prioritySelect.value : '',
+            sort: sortSelect ? sortSelect.value : 'created_at'
+        };
+        localStorage.setItem('taskFilters', JSON.stringify(filters));
+    }
+
+    // Save on form submission
+    if (filterForm) {
+        filterForm.addEventListener('submit', saveFilterState);
+    }
+
+    // Save on input changes for better UX
+    [searchInput, statusSelect, prioritySelect, sortSelect].forEach(element => {
+        if (element) {
+            element.addEventListener('change', saveFilterState);
+        }
+    });
+
+    // Auto-submit form on select changes
+    [statusSelect, prioritySelect, sortSelect].forEach(element => {
+        if (element) {
+            element.addEventListener('change', function() {
+                saveFilterState();
+                filterForm.submit();
+            });
+        }
+    });
+
+    // Only load saved state if URL params are empty (not from a direct link)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('search') && !urlParams.has('status') && !urlParams.has('priority')) {
+        loadFilterState();
+    }
+
+    // Clear filters functionality
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', function() {
+            // Clear all form fields
+            if (searchInput) searchInput.value = '';
+            if (statusSelect) statusSelect.value = '';
+            if (prioritySelect) prioritySelect.value = '';
+            if (sortSelect) sortSelect.value = 'created_at';
+
+            // Clear saved state
+            localStorage.removeItem('taskFilters');
+
+            // Redirect to clean URL
+            window.location.href = "{{ url_for('tasks.list_tasks') }}";
+        });
+    }
+});
+
+document.querySelectorAll('.toggle-complete').forEach(button => {
+    button.addEventListener('click', function(e) {
+        e.preventDefault();
+        const taskId = this.dataset.taskId;
+        const icon = this.querySelector('i');
+        const originalClass = icon.className;
+
+        // Show loading state
+        this.disabled = true;
+        icon.className = 'bi bi-hourglass-split';
+
+        fetch(`/tasks/${taskId}/toggle-complete`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status) {
+                const statusText = data.status === 'completed' ? 'completed' : 'marked as pending';
+                showNotification(`Task ${statusText} successfully!`, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotification('Failed to update task status', 'danger');
+                // Restore original state on error
+                this.disabled = false;
+                icon.className = originalClass;
+            }
+        })
+        .catch(error => {
+            showNotification('Network error occurred', 'danger');
+            // Restore original state on error
+            this.disabled = false;
+            icon.className = originalClass;
+        });
+    });
+});
+</script>
+{% endblock %}

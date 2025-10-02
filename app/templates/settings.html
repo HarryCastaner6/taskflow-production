@@ -1,0 +1,144 @@
+{% extends "glass_base.html" %}
+
+{% block title %}Settings - TaskFlow{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Settings Header -->
+    <div class="glass-card mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">
+                    <i class="bi bi-gear text-primary"></i> Settings
+                </h1>
+                <p style="color: var(--text-secondary); font-size: 1.125rem;">
+                    Manage your account preferences and application settings
+                </p>
+            </div>
+            <div>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-glass">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Account Settings -->
+            <div class="glass-card mb-4">
+                <h3 class="mb-3">
+                    <i class="bi bi-person-circle"></i> Account Settings
+                </h3>
+                <form>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" value="{{ current_user.username }}" readonly>
+                            <small class="text-muted">Username cannot be changed</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" value="{{ current_user.email }}" readonly>
+                            <small class="text-muted">Contact admin to change email</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <h5>Change Password</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Current Password</label>
+                                <input type="password" class="form-control" placeholder="Enter current password">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">New Password</label>
+                                <input type="password" class="form-control" placeholder="Enter new password">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" onclick="showComingSoon()">
+                        <i class="bi bi-check-circle"></i> Update Account
+                    </button>
+                </form>
+            </div>
+
+            <!-- Notification Settings -->
+            <div class="glass-card mb-4">
+                <h3 class="mb-3">
+                    <i class="bi bi-bell"></i> Notification Preferences
+                </h3>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                    <label class="form-check-label" for="emailNotifications">
+                        Email notifications for task updates
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="dueDateReminders" checked>
+                    <label class="form-check-label" for="dueDateReminders">
+                        Due date reminders
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="boardInvites" checked>
+                    <label class="form-check-label" for="boardInvites">
+                        Board invitation notifications
+                    </label>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="showComingSoon()">
+                    <i class="bi bi-check-circle"></i> Save Preferences
+                </button>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Quick Stats -->
+            <div class="glass-card mb-4">
+                <h3 class="mb-3">
+                    <i class="bi bi-graph-up"></i> Your Activity
+                </h3>
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">
+                            {{ current_user.tasks.count() }}
+                        </div>
+                        <small class="text-muted">Total Tasks</small>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--secondary-color);">
+                            {{ current_user.owned_boards.count() }}
+                        </div>
+                        <small class="text-muted">Boards Owned</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help & Support -->
+            <div class="glass-card">
+                <h3 class="mb-3">
+                    <i class="bi bi-question-circle"></i> Help & Support
+                </h3>
+                <div class="d-flex flex-column gap-2">
+                    <button class="btn btn-glass" onclick="showComingSoon()">
+                        <i class="bi bi-book"></i> User Guide
+                    </button>
+                    <button class="btn btn-glass" onclick="showComingSoon()">
+                        <i class="bi bi-envelope"></i> Contact Support
+                    </button>
+                    <button class="btn btn-glass" onclick="showComingSoon()">
+                        <i class="bi bi-bug"></i> Report Issue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showComingSoon() {
+    alert('This feature is coming soon! Settings functionality will be implemented in a future update.');
+}
+</script>
+{% endblock %}
