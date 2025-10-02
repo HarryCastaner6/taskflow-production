@@ -9,8 +9,12 @@ login_manager = LoginManager()
 csrf = CSRFProtect()
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    # Configure Flask for serverless environment
+    app = Flask(__name__, instance_relative_config=False)
     app.config.from_object(config_class)
+
+    # Disable instance folder creation for Vercel
+    app.instance_path = '/tmp'
 
     db.init_app(app)
     login_manager.init_app(app)

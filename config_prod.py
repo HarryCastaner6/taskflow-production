@@ -12,8 +12,9 @@ class ProductionConfig:
     # - Railway: https://railway.app
     # Or use Vercel Postgres
 
+    # Use in-memory SQLite for Vercel serverless (no file system writes)
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///tmp/taskflow.db'
+        'sqlite:///:memory:'
 
     # Fix for SQLAlchemy compatibility
     if SQLALCHEMY_DATABASE_URI and SQLALCHEMY_DATABASE_URI.startswith("postgres://"):
