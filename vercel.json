@@ -1,32 +1,14 @@
 {
-  "version": 2,
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "15mb"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/static/(.*)",
-      "dest": "/app/static/$1"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/api/index.py"
+      "dest": "api/index.py"
     }
-  ],
-  "env": {
-    "FLASK_ENV": "production",
-    "SECRET_KEY": "taskflow-mindscape-production-key-2024",
-    "DATABASE_URL": "sqlite:///:memory:"
-  },
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }
