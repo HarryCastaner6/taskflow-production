@@ -1,8 +1,10 @@
 from flask import Flask, render_template_string, request, redirect, url_for, flash, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import json
+import random
+import re
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -30,19 +32,45 @@ def require_login():
         return redirect(url_for('login'))
     return None
 
-def add_activity(user_id, action, task_title=None, details=None):
+def add_activity(user_id, action, task_title=None, details=None, task_id=None):
     activity = {
         'id': len(activity_db) + 1,
         'user_id': user_id,
         'action': action,
         'task_title': task_title,
+        'task_id': task_id,
         'details': details,
         'timestamp': datetime.now()
     }
     activity_db.insert(0, activity)  # Add to beginning for chronological order
-    # Keep only last 50 activities
-    if len(activity_db) > 50:
+    # Keep only last 100 activities
+    if len(activity_db) > 100:
         activity_db.pop()
+
+def get_gemini_suggestion(task_title, description=""):
+    """Generate AI-powered task suggestions using simulated Gemini AI"""
+    suggestions = [
+        "Consider breaking this into smaller subtasks",
+        "Add relevant tags for better organization",
+        "Set priority based on urgency and importance",
+        "Link to related documentation or resources",
+        "Schedule regular check-ins for progress tracking",
+        "Consider dependencies with other tasks",
+        "Add time estimates for better planning",
+        "Create a checklist for completion criteria"
+    ]
+    return random.choice(suggestions)
+
+def auto_archive_completed_tasks():
+    """Automatically archive tasks that have been in 'done' status for more than 7 days"""
+    cutoff_date = datetime.now() - timedelta(days=7)
+    for task in tasks_db.values():
+        if (task['status'] == 'done' and
+            task.get('completed_at') and
+            task['completed_at'] < cutoff_date):
+            task['status'] = 'archived'
+            task['archived_at'] = datetime.now()
+            add_activity(task['user_id'], 'Task auto-archived', task['title'], task_id=task['id'])
 
 def get_task_subtasks(task_id):
     return [st for st in subtasks_db.values() if st['task_id'] == task_id]
@@ -481,14 +509,98 @@ def api_stats():
 
 @app.route('/health')
 def health():
+    auto_archive_completed_tasks()  # Run auto-archiving on health checks
     return jsonify({
         "status": "online",
         "service": "TaskFlow Professional",
-        "version": "3.0",
+        "version": "4.0",
         "users": len(users_db),
         "tasks": len(tasks_db),
         "boards": len(boards_db)
     })
+
+@app.route('/api/update_task_status', methods=['POST'])
+def api_update_task_status():
+    """API endpoint for drag-and-drop status updates"""
+    redirect_response = require_login()
+    if redirect_response:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    task_id = data.get('task_id')
+    new_status = data.get('status')
+
+    user = get_current_user()
+    task = tasks_db.get(int(task_id))
+
+    if task and task['user_id'] == user['id']:
+        old_status = task['status']
+        task['status'] = new_status
+        task['updated_at'] = datetime.now()
+
+        if new_status == 'done':
+            task['completed_at'] = datetime.now()
+            add_activity(user['id'], 'Task completed', task['title'], task_id=task['id'])
+        elif new_status == 'archived':
+            task['completed_at'] = task['completed_at'] or datetime.now()
+            task['archived_at'] = datetime.now()
+            add_activity(user['id'], 'Task archived', task['title'], task_id=task['id'])
+        else:
+            add_activity(user['id'], f'Task moved to {new_status}', task['title'], task_id=task['id'])
+
+        return jsonify({'success': True, 'message': f'Task moved to {new_status}'})
+
+    return jsonify({'success': False, 'message': 'Task not found or access denied'}), 403
+
+@app.route('/api/gemini_suggest', methods=['POST'])
+def gemini_suggest():
+    """API endpoint for Gemini AI task suggestions"""
+    redirect_response = require_login()
+    if redirect_response:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    task_title = data.get('title', '')
+    description = data.get('description', '')
+
+    suggestion = get_gemini_suggestion(task_title, description)
+
+    user = get_current_user()
+    add_activity(user['id'], 'AI suggestion requested', task_title, details=f'Gemini: {suggestion}')
+
+    return jsonify({'success': True, 'suggestion': suggestion})
+
+@app.route('/api/quick_edit_task', methods=['POST'])
+def quick_edit_task():
+    """API endpoint for quick task editing"""
+    redirect_response = require_login()
+    if redirect_response:
+        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    task_id = int(data.get('task_id'))
+
+    user = get_current_user()
+    task = tasks_db.get(task_id)
+
+    if task and task['user_id'] == user['id']:
+        if 'title' in data:
+            task['title'] = data['title']
+        if 'description' in data:
+            task['description'] = data['description']
+        if 'priority' in data:
+            task['priority'] = data['priority']
+        if 'category' in data:
+            task['category'] = data['category']
+        if 'tags' in data:
+            task['tags'] = [tag.strip() for tag in data['tags'].split(',') if tag.strip()]
+
+        task['updated_at'] = datetime.now()
+        add_activity(user['id'], 'Task updated', task['title'], task_id=task['id'])
+
+        return jsonify({'success': True, 'message': 'Task updated successfully'})
+
+    return jsonify({'success': False, 'message': 'Task not found or access denied'}), 403
 
 # Templates
 HOME_TEMPLATE = '''
@@ -1457,14 +1569,23 @@ BOARD_TEMPLATE = '''
 <!DOCTYPE html>
 <html>
 <head>
-    <title>{{ board.name }} - TaskFlow</title>
+    <title>{{ board.name }} - TaskFlow Professional</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f8fafc;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #667eea 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
             min-height: 100vh;
+            color: #1a202c;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         /* Header */
@@ -2503,130 +2624,12 @@ ARCHIVE_TEMPLATE = '''
 </html>
 '''
 
-# Create demo data on startup
+# Initialize counters for production
 if not users_db:
-    # Demo user
-    demo_user = {
-        'id': 1,
-        'username': 'demo',
-        'email': 'demo@taskflow.com',
-        'full_name': 'Demo User',
-        'password_hash': generate_password_hash('demo123'),
-        'created_at': datetime.now(),
-        'is_admin': True
-    }
-    users_db[1] = demo_user
-    user_id_counter = 2
-
-    # Demo board
-    demo_board = {
-        'id': 1,
-        'name': 'Demo Project Board',
-        'description': 'A sample project board to showcase TaskFlow features',
-        'owner_id': 1,
-        'members': [1],
-        'created_at': datetime.now()
-    }
-    boards_db[1] = demo_board
-    board_id_counter = 2
-
-    # Demo tasks
-    demo_tasks = [
-        {
-            'id': 1,
-            'title': 'Welcome to TaskFlow Professional!',
-            'description': 'This is your first task in the new professional task board. You can drag tasks between columns, add subtasks, and track your progress.',
-            'priority': 'high',
-            'category': 'general',
-            'tags': ['welcome', 'getting-started'],
-            'status': 'todo',
-            'board_id': 1,
-            'user_id': 1,
-            'created_at': datetime.now(),
-            'updated_at': datetime.now(),
-            'completed_at': None
-        },
-        {
-            'id': 2,
-            'title': 'Explore the Kanban Board',
-            'description': 'Try moving tasks between the To Do, In Progress, and Done columns. Each column represents a different stage of work.',
-            'priority': 'medium',
-            'category': 'work',
-            'tags': ['tutorial', 'kanban'],
-            'status': 'in_progress',
-            'board_id': 1,
-            'user_id': 1,
-            'created_at': datetime.now(),
-            'updated_at': datetime.now(),
-            'completed_at': None
-        },
-        {
-            'id': 3,
-            'title': 'Add Subtasks and Track Progress',
-            'description': 'Break down complex tasks into smaller, manageable subtasks. Track your progress with the built-in progress bars.',
-            'priority': 'low',
-            'category': 'personal',
-            'tags': ['productivity', 'subtasks'],
-            'status': 'done',
-            'board_id': 1,
-            'user_id': 1,
-            'created_at': datetime.now(),
-            'updated_at': datetime.now(),
-            'completed_at': datetime.now()
-        }
-    ]
-
-    for task in demo_tasks:
-        tasks_db[task['id']] = task
-    task_id_counter = 4
-
-    # Demo subtasks
-    demo_subtasks = [
-        {
-            'id': 1,
-            'task_id': 2,
-            'title': 'Read the Getting Started guide',
-            'completed': True,
-            'created_at': datetime.now()
-        },
-        {
-            'id': 2,
-            'task_id': 2,
-            'title': 'Create your first custom task',
-            'completed': False,
-            'created_at': datetime.now()
-        },
-        {
-            'id': 3,
-            'task_id': 3,
-            'title': 'Add a subtask to existing task',
-            'completed': True,
-            'created_at': datetime.now()
-        },
-        {
-            'id': 4,
-            'task_id': 3,
-            'title': 'Mark subtask as complete',
-            'completed': True,
-            'created_at': datetime.now()
-        }
-    ]
-
-    for subtask in demo_subtasks:
-        subtasks_db[subtask['id']] = subtask
-    subtask_id_counter = 5
-
-    # Demo activity
-    initial_activities = [
-        {'action': 'User registered', 'task_title': None, 'details': 'Welcome to TaskFlow!'},
-        {'action': 'Board created', 'task_title': None, 'details': 'Demo Project Board'},
-        {'action': 'Task created', 'task_title': 'Welcome to TaskFlow Professional!', 'details': None},
-        {'action': 'Task created', 'task_title': 'Explore the Kanban Board', 'details': None},
-        {'action': 'Task completed', 'task_title': 'Add Subtasks and Track Progress', 'details': None}
-    ]
-
-    for i, activity in enumerate(initial_activities):
-        add_activity(1, activity['action'], activity['task_title'], activity['details'])
+    user_id_counter = 1
+    board_id_counter = 1
+    task_id_counter = 1
+    subtask_id_counter = 1
 
 # Vercel entry point
 application = app
