@@ -10,11 +10,8 @@ csrf = CSRFProtect()
 
 def create_app(config_class=Config):
     # Configure Flask for serverless environment
-    app = Flask(__name__, instance_relative_config=False)
+    app = Flask(__name__, instance_relative_config=False, instance_path='/tmp')
     app.config.from_object(config_class)
-
-    # Disable instance folder creation for Vercel
-    app.instance_path = '/tmp'
 
     db.init_app(app)
     login_manager.init_app(app)
@@ -52,9 +49,7 @@ def create_app(config_class=Config):
         db.session.rollback()
         return render_template('errors/500.html'), 500
 
-    with app.app_context():
-        # Import models to ensure they are registered with SQLAlchemy
-        from app.models import User, Task, Tag, Board, BoardAccess, TaskAudit
-        db.create_all()
+    # Import models to ensure they are registered with SQLAlchemy
+    from app.models import User, Task, Tag, Board, BoardAccess, TaskAudit
 
     return app

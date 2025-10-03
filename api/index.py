@@ -14,15 +14,15 @@ try:
     # Create Flask app with serverless config
     app = create_app(ProductionConfig)
 
-    # Initialize database in application context (for each request)
-    @app.before_first_request
-    def create_tables():
+    # Initialize database and create default admin user
+    with app.app_context():
         try:
-            from app.models import db
+            from app.models import db, User
+
+            # Create all tables
             db.create_all()
 
             # Create default admin user if not exists
-            from app.models.user import User
             if not User.query.filter_by(username='admin').first():
                 admin = User(
                     username='admin',
